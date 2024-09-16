@@ -1,0 +1,173 @@
+<script  setup>
+import AppLayout from './../AppLayout.vue'; 
+import {reactive,ref,onMounted} from 'vue'
+import { defineComponent } from 'vue';
+import { useField,useForm } from 'vee-validate';
+import { useDatosStore } from './../../stores/datosApp';
+import axios from 'axios';
+import {Check,Delete,Edit,Message,Search,Star,} from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+
+const usuarios=reactive([])
+const store = useDatosStore()
+
+
+onMounted(()=>{
+    
+    axios.get(store.urlServidor + '/users',{headers:store.headers()})
+    .then((response)=>{
+        usuarios.splice(0, usuarios.length, ...response.data.data);
+    }).catch(()=>{
+
+    })
+})
+const eliminarusuario=(usuario)=>{
+    ElMessageBox.confirm(
+    'Desea eliminar el usuario: ' + usuario.name + '?',
+    'Warning',
+    {
+      confirmButtonText: 'Si Eliminar',
+      cancelButtonText: 'Cancelar',
+      type: 'Advertencia',
+    }
+  )
+    .then(() => {
+
+        axios.delete(`${store.urlServidor}/usuarios/${usuario.id}`,{headers:store.headers()})
+          .then(response => {
+            ElMessage({
+                type: 'success',
+                message: 'Delete completed',
+            })
+            axios.get(store.urlServidor + '/users',{headers:store.headers()})
+            .then((response)=>{
+                usuarios.splice(0, usuarios.length, ...response.data.data);
+            }).catch(()=>{
+
+            })
+          })
+          .catch(error => {
+            console.log(error)
+          })
+      
+    })
+    .catch(() => {
+      
+    })
+}
+const resetearClave=(usuario)=>{
+    ElMessageBox.confirm(
+    'Desea resetear la clave del usuario: ' + usuario.name + '?',
+    'Warning',
+    {
+      confirmButtonText: 'Si Resetear clave',
+      cancelButtonText: 'Cancelar',
+      type: 'warning',
+    }
+  )
+    .then(() => {
+        let formData = new FormData()
+        formData.append("_method", "PUT")
+        formData.append('id', usuario.id)
+        axios.post(`${store.urlServidor}/resetpassword/${usuario.id}`,formData,{headers:store.headers()})
+          .then(response => {
+            ElMessage({
+                type: 'success',
+                message: 'La nueva clave del usuario es el DNI',
+            })
+            //obtenerLibros()
+          })
+          .catch(error => {
+            console.log(error)
+          })
+      
+    })
+    .catch(() => {
+      
+    })
+}
+</script>
+<template>
+    <AppLayout titulo="Usuarios">
+        <div class="p-4">
+            <div class="py-2 flex flex-row-reverse">
+                <router-link to="/usuarios/create">
+                    <el-button type="primary">Nuevo Usuario</el-button>
+                </router-link>
+            </div>
+            <table class="w-full  rounded-2xl shadow">
+                <thead class="border">
+                    <tr>
+                        <th
+                            class="px-5 py-5 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            ID
+                        </th>
+                        <th
+                            class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            DNI
+                        </th>
+                        <th
+                            class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Nombre
+                        </th>
+                        <th
+                            class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Correo
+                        </th>
+                        <th
+                            class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Estado
+                        </th>
+                      
+                        <th
+                            class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Acciones
+                        </th>
+                       
+                    </tr>
+                </thead>
+                <tbody class="border">
+                    <tr class="hover:bg-gray-200" v-for="usuario in usuarios" :key="usuario.id">
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm ">
+                            {{ usuario.id }}
+                        </td>
+                    
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm ">
+                            <p class="text-gray-900 whitespace-no-wrap">
+                                {{ usuario.dni }}
+                            </p>
+                        </td>
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm ">
+                            <p class="text-gray-900 whitespace-no-wrap">
+                                {{ usuario.name }}
+                            </p>
+                        </td>
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm ">
+                            <p class="text-gray-900 whitespace-no-wrap">
+                                {{ usuario.email }}
+                            </p>
+                        </td>
+                        
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm ">
+                            <span class="rounded p-1 font-bold px-3 text-xs" :class="[usuario.estado==0?'bg-red-200 text-red-800':'bg-green-200 text-green-800']" >{{usuario.estado==0?'Suspendido':'Activo'}}</span>
+                        </td>
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm ">
+                            <router-link class="mr-2" :to="`/usuarios/edit/${usuario.id}`">
+                                <el-button  type="warning" :icon="Edit" plain></el-button>
+                            </router-link>
+                            <el-button v-on:click="eliminarusuario(usuario)" type="danger" :icon="Delete" plain></el-button>
+                            <el-button v-on:click="resetearClave(usuario)" type="primary"  plain> Resetear Clave</el-button>
+
+                        </td>
+                    </tr>
+                </tbody>
+        </table>
+        </div>
+        
+    </AppLayout>
+</template>
+<style scoped>
+tr:hover td {
+    background-color: #f1f5f9; /* Estilo de hover */
+  }
+</style>
